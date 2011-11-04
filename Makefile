@@ -7,15 +7,15 @@ PREFIX  = /usr/local
 BINDIR  = $(PREFIX)/bin
 MANDIR  = $(PREFIX)/share/man
 
-CFLAGS  = -O2 -g -std=c99 -fno-strict-aliasing -Wall -W -D_GNU_SOURCE
-LDFLAGS = -lssl -lcrypto -lev
-OBJS    = stud.o ringbuffer.o
+CFLAGS  = -O2 -g -std=c99 -fno-strict-aliasing -Wall -W -D_GNU_SOURCE -I/opt/local/include 
+LDFLAGS = -lssl -lcrypto -lev -L/opt/local/lib
+OBJS    = stud.o ringbuffer.o stats.o
 
 all: realall
 
 # Shared cache feature
 ifneq ($(USE_SHARED_CACHE),)
-CFLAGS += -DUSE_SHARED_CACHE -DUSE_SYSCALL_FUTEX
+CFLAGS += -DUSE_SHARED_CACHE -DUSE_SYSCALL_FUTEX 
 OBJS   += shctx.o ebtree/libebtree.a
 ALL    += ebtree
 

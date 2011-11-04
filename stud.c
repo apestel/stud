@@ -58,6 +58,7 @@
 
 #include "ringbuffer.h"
 #include "shctx.h"
+#include "stats.h"
 
 #ifndef MSG_NOSIGNAL
 # define MSG_NOSIGNAL 0
@@ -103,8 +104,10 @@ typedef struct stud_options {
 #endif
     int QUIET;
     int SYSLOG;
+#ifndef __APPLE__
     int TCP_KEEPALIVE;
-} stud_options;
+#endif
+} stud_options; 
 
 static stud_options OPTIONS = {
     ENC_TLS,      // ETYPE
@@ -127,9 +130,10 @@ static stud_options OPTIONS = {
 #endif
     0,            // QUIET
     0,            // SYSLOG
-    3600          // TCP_KEEPALIVE
+#ifndef __APPLE__
+   3600          // TCP_KEEPALIVE
+#endif
 };
-
 
 
 static char tcp_proxy_line[128] = "";
@@ -194,6 +198,10 @@ static void setnonblocking(int fd) {
 
 /* set a tcp socket to use TCP Keepalive */
 static void settcpkeepalive(int fd) {
+	#ifdef __APPLE__
+	(void)fd;
+	#endif
+#ifndef __APPLE__
     int optval = 1;
     socklen_t optlen = sizeof(optval);
 
@@ -206,6 +214,7 @@ static void settcpkeepalive(int fd) {
     if(setsockopt(fd, SOL_TCP, TCP_KEEPIDLE, &optval, optlen) < 0) {
         ERR("Error setting TCP_KEEPIDLE on client socket: %s", strerror(errno));
     }
+#endif
 }
 
 static void fail(const char* s) {
@@ -555,6 +564,7 @@ static void handle_connect(struct ev_loop *loop, ev_io *w, int revents) {
     t = connect(ps->fd_down, backaddr->ai_addr, backaddr->ai_addrlen);
     if (!t || errno == EISCONN || !errno) {
         /* INIT */
+		inc_nb_sessions(child_num);
         ev_io_stop(loop, &ps->ev_w_down);
         ev_io_init(&ps->ev_r_down, back_read, ps->fd_down, EV_READ);
         ev_io_init(&ps->ev_w_down, back_write, ps->fd_down, EV_WRITE);
@@ -783,9 +793,11 @@ static void handle_accept(struct ev_loop *loop, ev_io *w, int revents) {
             ERR("{client} accept() failed; too many open files for this system\n");
             break;
 
+#ifndef __APPLE__
         case 'k':
             OPTIONS.TCP_KEEPALIVE = atoi(optarg);
             break;
+#endif
 
         default:
             assert(errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN);
@@ -1244,6 +1256,7 @@ int main(int argc, char **argv) {
     init_signals();
 
     init_globals();
+	init_stats(OPTIONS.NCORES);
 
     listener_socket = create_main_socket();
 
@@ -1260,11 +1273,6 @@ int main(int argc, char **argv) {
 
     start_children(0, OPTIONS.NCORES);
 
-    for (;;) {
-        /* Sleep and let the children work.
-         * Parent will be woken up if a signal arrives */
-        pause();
-    }
-
+	stats_loop();
     exit(0); /* just a formality; we never get here */
 }
