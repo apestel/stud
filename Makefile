@@ -14,7 +14,7 @@ OBJS    = stud.o ringbuffer.o stats.o
 all: realall
 
 # Shared cache feature
-ifneq ($(USE_SHARED_CACHE),)
+#ifneq ($(USE_SHARED_CACHE),)
 CFLAGS += -DUSE_SHARED_CACHE -DUSE_SYSCALL_FUTEX 
 OBJS   += shctx.o ebtree/libebtree.a
 ALL    += ebtree
@@ -26,7 +26,7 @@ ebtree:
 		echo "*** Download libebtree at http://1wt.eu/tools/ebtree/" ; \
 		echo "*** Untar it and make a link named 'ebtree' to point on it"; \
 		exit 1 )
-endif
+#endif
 
 ALL += stud
 realall: $(ALL)
